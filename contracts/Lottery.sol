@@ -28,7 +28,7 @@ contract Lottery is Ownable, Pausable {
     owner = msg.sender;
   }
 
-  function() payable {
+  function() public payable {
     require(false);
   }
 
@@ -53,6 +53,7 @@ contract Lottery is Ownable, Pausable {
     paused = true;
 
     msg.sender.transfer(this.balance / 10);
+    // TODO RANDOMNESS.
 
     return 0;
   }

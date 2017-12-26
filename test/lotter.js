@@ -185,22 +185,25 @@ contract('Lottery', accounts => {
         assert.ok(paused);
       });
 
-      //TODO: What?
-      // it('should get 10% cut to owner', async() => {
-      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      it('should get 10% cut to owner', async() => {
 
-      //   const balance = web3.eth.getBalance(lottery.address).toNumber();
-      //   const ownerBalance = web3.eth.getBalance(owner).toNumber();
+        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+
+        const balance = web3.eth.getBalance(lottery.address).toNumber();
+        const ownerBalance = web3.eth.getBalance(owner).toNumber();
 
 
-      //   await lottery.runLottery({ from: owner });
+        await lottery.runLottery({ from: owner });
 
-      //   const newBalance = web3.eth.getBalance(owner).toNumber();
+        const newBalance = web3.eth.getBalance(owner).toNumber();
 
-      //   assert.ok(newBalance > ownerBalance);
-      // });
+        assert.ok(newBalance > ownerBalance);
+      });
 
-      
     });
   });
 });
