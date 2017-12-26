@@ -1,0 +1,24 @@
+{
+  "name": "crypto-lottery",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "truffle compile",
+    "start": "node index.js",
+    "test": "truffle test",
+    "compile": "truffle compile",
+    "migrate": "truffle migrate"
+  },
+  "author": "Mert Susur",
+  "license": "ISC",
+  "devDependencies": {
+    "truffle-hdwallet-provider": "0.0.3",
+    "yargs": "^10.0.3"
+  },
+  "dependencies": {
+    "express": "^4.16.2",
+    "truffle": "^4.0.4",
+    "zeppelin-solidity": "^1.5.0"
+  }
+}
