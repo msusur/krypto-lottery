@@ -6,6 +6,7 @@ import 'node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol';
 contract Lottery is Ownable, Pausable {
   uint128 public maxParticipant;
   uint256 public lotteryAmount;
+  // address public charityAddress;
   Participant[] private participants;
 
   struct Participant {
@@ -29,7 +30,7 @@ contract Lottery is Ownable, Pausable {
   }
 
   function() public payable {
-    require(false);
+    apply();
   }
 
   function apply() public payable whenNotPaused returns (uint256) {
@@ -44,6 +45,10 @@ contract Lottery is Ownable, Pausable {
   function setParticipantsNumber(uint128 newNumber) public onlyOwner {
     maxParticipant = newNumber;
   }
+
+  // function setCharityAddress(address _newCharityAddress) public onlyOwner {
+  //   charityAddress = _newCharityAddress;
+  // }
 
   function getCurrentCount() public constant returns (uint256) {
     return participants.length;

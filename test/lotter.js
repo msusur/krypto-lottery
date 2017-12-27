@@ -166,6 +166,18 @@ contract('Lottery', accounts => {
       });
     });
 
+    describe('default function', () => {
+      it('should accept payment and increase participants by one', async() => {
+        await lottery.sendTransaction({ value: web3.toWei(0.02, 'ether'), from: someone });
+
+        const currentCount = await lottery.getCurrentCount();
+        const balance = web3.eth.getBalance(lottery.address).toNumber();
+
+        assert.equal(1, currentCount);
+        assert.equal(web3.toWei(0.02, 'ether'), balance);
+      });
+    });
+
     describe('run lottery', () => {
       it('should only run by owner', async() => {
         try {
@@ -185,7 +197,7 @@ contract('Lottery', accounts => {
         assert.ok(paused);
       });
 
-      it('should get 10% cut to owner', async() => {
+      it('should get 10% cut to owner account', async() => {
 
         lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
         await lottery.apply({ value: web3.toWei(5, 'ether') });
@@ -203,6 +215,8 @@ contract('Lottery', accounts => {
 
         assert.ok(newBalance > ownerBalance);
       });
+
+      // it('should')
 
     });
   });
