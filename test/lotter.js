@@ -11,7 +11,8 @@ contract('Lottery', accounts => {
   let lottery;
   const owner = accounts[0],
     someone = accounts[1],
-    someone2 = accounts[2];
+    someone2 = accounts[2],
+    charity = accounts[3];
 
   describe('constructor', () => {
     it('should set the participant number 30 by default', async() => {
@@ -46,12 +47,28 @@ contract('Lottery', accounts => {
       assert.equal(web3.toWei(0.02, 'ether'), amount);
     });
 
-    it('should set the lottery amound if the value exists', async() => {
+    it('should set the lottery amount if the value exists', async() => {
       lottery = await Lottery.new(10, web3.toWei(1, 'ether'));
 
       const amount = await lottery.lotteryAmount.call();
 
       assert.equal(web3.toWei(1, 'ether'), amount);
+    });
+
+    it('should set the current lottery to one', async() => {
+      lottery = await Lottery.new(10, web3.toWei(1, 'ether'));
+
+      const amount = await lottery.currentLottery.call();
+
+      assert.equal(1, amount);
+    });
+
+    it('should initialise the first lottery', async() => {
+      lottery = await Lottery.new();
+
+      const currentLottery = await lottery.getCurrentLottery();
+
+      assert.ok(currentLottery[0] > 0);
     });
   });
 
@@ -189,35 +206,124 @@ contract('Lottery', accounts => {
         assert.fail('failed');
       });
 
-      it('should pause the contract', async() => {
+      it('should unpause the contract', async() => {
         await lottery.runLottery({ from: owner });
 
         const paused = await lottery.paused.call();
 
-        assert.ok(paused);
+        assert.ok(!paused);
       });
 
-      it('should get 10% cut to owner account', async() => {
+      it('should get 10% cut to charity account', async() => {
 
         lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
 
         const balance = web3.eth.getBalance(lottery.address).toNumber();
-        const ownerBalance = web3.eth.getBalance(owner).toNumber();
+        const ownerBalance = web3.eth.getBalance(charity).toNumber();
 
-
+        await lottery.setCharityAddress(charity, { from: owner });
         await lottery.runLottery({ from: owner });
 
-        const newBalance = web3.eth.getBalance(owner).toNumber();
+        const newBalance = web3.eth.getBalance(charity).toNumber();
 
         assert.ok(newBalance > ownerBalance);
       });
 
-      // it('should')
+      it('should initialise a new lottery', async() => {
+        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
 
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+
+        await lottery.setCharityAddress(charity, { from: owner });
+        await lottery.runLottery({ from: owner });
+
+        const currentLottery = await lottery.currentLottery.call();
+
+        assert.equal(2, currentLottery);
+      });
+    });
+
+    describe('initialise new lottery', () => {
+      it('should not run by non-owner', async() => {
+        await lottery.pause({ from: owner });
+        try {
+          await lottery.initialise({ from: someone });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should not run unpaused', async() => {
+        try {
+          await lottery.initialise({ from: owner });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should create a new lottery and increase the number', async() => {
+        await lottery.pause();
+
+        await lottery.initialise();
+
+        const currentLottery = await lottery.currentLottery.call();
+
+        assert.equal(2, currentLottery);
+      });
+
+      it('should not run if there is money left in the contract', async() => {
+        await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+        
+        await lottery.pause();
+        
+        try {
+          await lottery.initialise();
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+
+        assert.fail('failed');
+      });
+    });
+
+    describe('set charity account', () => {
+      it('should not run by non-owner', async() => {
+        try {
+          await lottery.setCharityAddress(charity, { from: someone });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should not allow set empty address', async() => {
+        try {
+          await lottery.setCharityAddress(null, { from: owner });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should set the new address', async() => {
+        await lottery.setCharityAddress(charity, { from: owner });
+
+        const charityAddress = await lottery.charityAddress.call();
+
+        assert.equal(charity, charityAddress);
+      });
     });
   });
 });

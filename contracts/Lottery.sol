@@ -6,8 +6,18 @@ import 'node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol';
 contract Lottery is Ownable, Pausable {
   uint128 public maxParticipant;
   uint256 public lotteryAmount;
-  // address public charityAddress;
-  Participant[] private participants;
+  address public charityAddress;
+
+  mapping(uint => LotteryPlay) public lotteries;
+  uint16 public currentLottery;
+
+  struct LotteryPlay {
+    uint endBlock;
+    uint startBlock;
+    bytes32 blockHash;
+    address winner;
+    Participant[] participants;
+  }
 
   struct Participant {
     address addr;
@@ -25,8 +35,9 @@ contract Lottery is Ownable, Pausable {
     } else {
       lotteryAmount = _lotteryAmount;
     }
-
-    owner = msg.sender;
+    paused = true;
+    initialise();
+    paused = false;
   }
 
   function() public payable {
@@ -34,32 +45,48 @@ contract Lottery is Ownable, Pausable {
   }
 
   function apply() public payable whenNotPaused returns (uint256) {
-    require(participants.length + 1 <= maxParticipant);
+    require(lotteries[currentLottery].participants.length + 1 <= maxParticipant);
     require(msg.value == lotteryAmount);
 
-    participants.push(Participant(msg.sender));
+    lotteries[currentLottery].participants.push(Participant(msg.sender));
 
-    return participants.length - 1;
+    return lotteries[currentLottery].participants.length - 1;
+  }
+
+  function initialise() public whenPaused onlyOwner {
+    require(this.balance == 0);
+    currentLottery++;
+    lotteries[currentLottery].startBlock = block.number;
+    lotteries[currentLottery].blockHash = block.blockhash(lotteries[currentLottery].startBlock);
+    lotteries[currentLottery].endBlock = block.number + 38117;
   }
 
   function setParticipantsNumber(uint128 newNumber) public onlyOwner {
     maxParticipant = newNumber;
   }
 
-  // function setCharityAddress(address _newCharityAddress) public onlyOwner {
-  //   charityAddress = _newCharityAddress;
-  // }
+  function setCharityAddress(address _newCharityAddress) public onlyOwner {
+    require(_newCharityAddress != address(0));
+    charityAddress = _newCharityAddress;
+  }
 
   function getCurrentCount() public constant returns (uint256) {
-    return participants.length;
+    return lotteries[currentLottery].participants.length;
+  }
+
+  function getCurrentLottery() public constant returns(uint endBlock, uint startBlock, bytes32 blockHash, address winner, uint participants) {
+    LotteryPlay storage lottery = lotteries[currentLottery];
+    return (lottery.endBlock, lottery.startBlock, lottery.blockHash, lottery.winner, lottery.participants.length);
   }
 
   function runLottery() public onlyOwner returns (uint256) {
     paused = true;
 
-    msg.sender.transfer(this.balance / 10);
+    charityAddress.transfer(this.balance / 10);
     // TODO RANDOMNESS.
-
+    msg.sender.transfer(this.balance);
+    initialise();
+    paused = false;
     return 0;
   }
   
