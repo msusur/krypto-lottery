@@ -79,6 +79,14 @@ contract('Lottery', accounts => {
 
       assert.equal(owner, affiliateAddress);
     });
+
+    it('should set the charity address as owner', async() => {
+      lottery = await Lottery.new();
+
+      const charityAddress = await lottery.charityAddress.call();
+
+      assert.equal(owner, charityAddress);
+    });
   });
 
   describe('lottery functions', () => {
@@ -263,7 +271,7 @@ contract('Lottery', accounts => {
           assert.ok(isRevertError(error));
           return;
         }
-        
+
         await lottery.apply({ value: web3.toWei(0.02, 'ether') });
         try {
           // try with one participant
@@ -320,6 +328,49 @@ contract('Lottery', accounts => {
         const currentLottery = await lottery.currentLottery.call();
 
         assert.equal(2, currentLottery);
+      });
+
+      it('should send 1% to affiliate account', async() => {
+        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+
+        await lottery.setCharityAddress(charity);
+        await lottery.setAffiliateAddress(affiliate);
+
+        const affiliateInitialBalance = web3.eth.getBalance(affiliate).toNumber();
+
+        await lottery.runLottery({ from: owner });
+
+        const newBalance = web3.eth.getBalance(affiliate).toNumber();
+
+        assert.ok(newBalance > affiliateInitialBalance);
+      });
+
+      it('should update the total prize fields', async() => {
+        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+
+        await lottery.setCharityAddress(charity);
+        await lottery.setAffiliateAddress(affiliate);
+
+        await lottery.runLottery({ from: owner });
+
+        const totalMoneyWon = await lottery.totalGivenAmount.call();
+        assert.ok(totalMoneyWon > 0);
+
+        const totalDonation = await lottery.totalDonation.call();
+        assert.ok(totalDonation > 0);
+        
+        const totalAffiliateWon = await lottery.totalAffiliateAmount.call();
+        assert.ok(totalAffiliateWon > 0);
       });
     });
 

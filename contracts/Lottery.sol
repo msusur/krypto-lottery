@@ -4,11 +4,19 @@ import 'node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 contract Lottery is Ownable, Pausable {
+  // wait for approx. 1 week.
+  uint constant NEXT_LOTTERY_WAIT_TIME_IN_BLOCKS = 38117;
+
+  event LotteryRunFinished(address winner, uint256 charityAmount, uint256 affiliateAmount, uint256 jackpot);
+  event ApplicationDone(uint applicationNumber);
 
   uint128 public maxParticipant;
   uint256 public lotteryAmount;
   address public charityAddress;
   address public affiliateAddress;
+  uint256 public totalGivenAmount;
+  uint256 public totalDonation;
+  uint256 public totalAffiliateAmount;
 
   mapping(uint => LotteryPlay) public lotteries;
   uint16 public currentLottery;
@@ -41,6 +49,7 @@ contract Lottery is Ownable, Pausable {
     initialise();
     paused = false;
     affiliateAddress = msg.sender;
+    charityAddress = msg.sender;
   }
 
   function() public payable {
@@ -52,7 +61,7 @@ contract Lottery is Ownable, Pausable {
     require(msg.value == lotteryAmount);
 
     lotteries[currentLottery].participants.push(Participant(msg.sender));
-
+    ApplicationDone(lotteries[currentLottery].participants.length - 1);
     return lotteries[currentLottery].participants.length - 1;
   }
 
@@ -72,7 +81,7 @@ contract Lottery is Ownable, Pausable {
     currentLottery++;
     lotteries[currentLottery].startBlock = block.number;
     lotteries[currentLottery].blockHash = block.blockhash(lotteries[currentLottery].startBlock);
-    lotteries[currentLottery].endBlock = block.number + 38117;
+    lotteries[currentLottery].endBlock = block.number + NEXT_LOTTERY_WAIT_TIME_IN_BLOCKS;
   }
 
   function setParticipantsNumber(uint128 newNumber) public onlyOwner {
@@ -94,16 +103,29 @@ contract Lottery is Ownable, Pausable {
     require(lotteries[currentLottery].participants.length >= 2);
     paused = true;
 
-    charityAddress.transfer(this.balance / 10);
+    // send 10% to charity account.
+    uint256 charityAmount = this.balance / 10;
+    charityAddress.transfer(charityAmount);
+    totalDonation += charityAmount;
 
+    // send 1% to an affiliate address to cover the costs.
+    uint256 affiliateAmount = this.balance / 100;
+    affiliateAddress.transfer(affiliateAmount);
+    totalAffiliateAmount += affiliateAmount;
+
+    // random winner.
     uint256 randomValue = random();
     address winner = lotteries[currentLottery].participants[randomValue].addr;
-    winner.transfer(this.balance);
+
+    // send the rest of the funds to the winner.
+    uint256 winningPrice = this.balance;
+    winner.transfer(winningPrice);
     lotteries[currentLottery].winner = winner;
+    totalGivenAmount += winningPrice;
 
     initialise();
     paused = false;
-
+    LotteryRunFinished(winner, charityAmount, affiliateAmount, winningPrice);
     return (randomValue, winner);
   }
 
