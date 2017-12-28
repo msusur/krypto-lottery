@@ -4,9 +4,11 @@ import 'node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 contract Lottery is Ownable, Pausable {
+
   uint128 public maxParticipant;
   uint256 public lotteryAmount;
   address public charityAddress;
+  address public affiliateAddress;
 
   mapping(uint => LotteryPlay) public lotteries;
   uint16 public currentLottery;
@@ -38,6 +40,7 @@ contract Lottery is Ownable, Pausable {
     paused = true;
     initialise();
     paused = false;
+    affiliateAddress = msg.sender;
   }
 
   function() public payable {
@@ -52,6 +55,17 @@ contract Lottery is Ownable, Pausable {
 
     return lotteries[currentLottery].participants.length - 1;
   }
+
+  function getCurrentCount() public constant returns (uint256) {
+    return lotteries[currentLottery].participants.length;
+  }
+
+  function getCurrentLottery() public constant returns(uint endBlock, uint startBlock, bytes32 blockHash, address winner, uint participants) {
+    LotteryPlay storage lottery = lotteries[currentLottery];
+    return (lottery.endBlock, lottery.startBlock, lottery.blockHash, lottery.winner, lottery.participants.length);
+  }
+
+  // Admin tools
 
   function initialise() public whenPaused onlyOwner {
     require(this.balance == 0);
@@ -70,24 +84,41 @@ contract Lottery is Ownable, Pausable {
     charityAddress = _newCharityAddress;
   }
 
-  function getCurrentCount() public constant returns (uint256) {
-    return lotteries[currentLottery].participants.length;
+  function setAffiliateAddress(address _newAffiliate) public onlyOwner {
+    require(_newAffiliate != address(0));
+    affiliateAddress = _newAffiliate;
   }
 
-  function getCurrentLottery() public constant returns(uint endBlock, uint startBlock, bytes32 blockHash, address winner, uint participants) {
-    LotteryPlay storage lottery = lotteries[currentLottery];
-    return (lottery.endBlock, lottery.startBlock, lottery.blockHash, lottery.winner, lottery.participants.length);
-  }
-
-  function runLottery() public onlyOwner returns (uint256) {
+  function runLottery() public onlyOwner returns (uint256, address) {
+    require(charityAddress != address(0));
+    require(lotteries[currentLottery].participants.length >= 2);
     paused = true;
 
     charityAddress.transfer(this.balance / 10);
-    // TODO RANDOMNESS.
-    msg.sender.transfer(this.balance);
+
+    uint256 randomValue = random();
+    address winner = lotteries[currentLottery].participants[randomValue].addr;
+    winner.transfer(this.balance);
+    lotteries[currentLottery].winner = winner;
+
     initialise();
     paused = false;
-    return 0;
+
+    return (randomValue, winner);
+  }
+
+  // Helper functions
+
+  function random() internal view returns(uint256) {
+    uint256 r1 = uint256(block.blockhash(block.number-1));
+    uint256 r2 = uint256(block.blockhash(lotteries[currentLottery].startBlock));
+
+    uint256 val;
+
+    assembly {
+      val := xor(r1, r2)
+    }
+    return val % lotteries[currentLottery].participants.length;
   }
   
 }

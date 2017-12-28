@@ -12,7 +12,8 @@ contract('Lottery', accounts => {
   const owner = accounts[0],
     someone = accounts[1],
     someone2 = accounts[2],
-    charity = accounts[3];
+    charity = accounts[3],
+    affiliate = accounts[4];
 
   describe('constructor', () => {
     it('should set the participant number 30 by default', async() => {
@@ -69,6 +70,14 @@ contract('Lottery', accounts => {
       const currentLottery = await lottery.getCurrentLottery();
 
       assert.ok(currentLottery[0] > 0);
+    });
+
+    it('should set the affiliate address as owner', async() => {
+      lottery = await Lottery.new();
+
+      const affiliateAddress = await lottery.affiliateAddress.call();
+
+      assert.equal(owner, affiliateAddress);
     });
   });
 
@@ -183,6 +192,36 @@ contract('Lottery', accounts => {
       });
     });
 
+    describe('setAffiliateAddress', () => {
+      it('should only run by owner', async() => {
+        try {
+          await lottery.setAffiliateAddress(affiliate, { from: someone });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should require the address is not null', async() => {
+        try {
+          await lottery.setAffiliateAddress(null, { from: someone });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should set affiliate address', async() => {
+        await lottery.setAffiliateAddress(affiliate, { from: owner });
+
+        const affiliateAddress = await lottery.affiliateAddress.call();
+
+        assert.equal(affiliate, affiliateAddress);
+      });
+    });
+
     describe('default function', () => {
       it('should accept payment and increase participants by one', async() => {
         await lottery.sendTransaction({ value: web3.toWei(0.02, 'ether'), from: someone });
@@ -206,7 +245,42 @@ contract('Lottery', accounts => {
         assert.fail('failed');
       });
 
+      it('should require charity address not null', async() => {
+        try {
+          await lottery.runLottery({ from: owner });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should not run with less than two participant', async() => {
+        try {
+          // try with zero participant
+          await lottery.runLottery({ from: owner });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        
+        await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+        try {
+          // try with one participant
+          await lottery.runLottery({ from: owner });
+        } catch (error) {
+          assert.ok(isRevertError(error));
+          return;
+        }
+        assert.fail('failed');
+      });
+
       it('should unpause the contract', async() => {
+        await lottery.setCharityAddress(charity, { from: owner });
+        await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+        await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+        await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+
         await lottery.runLottery({ from: owner });
 
         const paused = await lottery.paused.call();
@@ -237,6 +311,7 @@ contract('Lottery', accounts => {
       it('should initialise a new lottery', async() => {
         lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
 
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
 
         await lottery.setCharityAddress(charity, { from: owner });
@@ -282,9 +357,9 @@ contract('Lottery', accounts => {
 
       it('should not run if there is money left in the contract', async() => {
         await lottery.apply({ value: web3.toWei(0.02, 'ether') });
-        
+
         await lottery.pause();
-        
+
         try {
           await lottery.initialise();
         } catch (error) {
@@ -324,6 +399,21 @@ contract('Lottery', accounts => {
 
         assert.equal(charity, charityAddress);
       });
+
+      // it('should set the new address', async() => {
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+      //   await lottery.apply({ value: web3.toWei(0.02, 'ether') });
+
+
+      //   const random = await lottery.runLottery();
+
+      //   console.log(random[0], random[1]);
+      // });
     });
   });
 });
