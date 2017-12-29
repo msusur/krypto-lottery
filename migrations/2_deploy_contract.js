@@ -1,9 +1,9 @@
-const Lottery = artifacts.require('./Lottery.sol');
+const KriptoLottery = artifacts.require('./KriptoLottery.sol');
 
 module.exports = function(deployer) {
   return deployer.then(() => {
-    return deployer.deploy(Lottery).then(instance => {
-      confirmationAddress = Lottery.address;
+    return deployer.deploy(KriptoLottery).then(instance => {
+      confirmationAddress = KriptoLottery.address;
     });
   });
 }

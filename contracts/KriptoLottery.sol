@@ -3,7 +3,7 @@ pragma solidity ^0.4.18;
 import 'node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
-contract Lottery is Ownable, Pausable {
+contract KriptoLottery is Ownable, Pausable {
   // wait for approx. 1 week.
   uint constant NEXT_LOTTERY_WAIT_TIME_IN_BLOCKS = 38117;
 
@@ -17,6 +17,8 @@ contract Lottery is Ownable, Pausable {
   uint256 public totalGivenAmount;
   uint256 public totalDonation;
   uint256 public totalAffiliateAmount;
+  uint16 public donationRatio;
+  uint16 public affiliateRatio;
 
   mapping(uint => LotteryPlay) public lotteries;
   uint16 public currentLottery;
@@ -33,7 +35,7 @@ contract Lottery is Ownable, Pausable {
     address addr;
   }
 
-  function Lottery(uint128 _maxParticipant, uint256 _lotteryAmount) public {
+  function KriptoLottery(uint128 _maxParticipant, uint256 _lotteryAmount) public {
     if (_maxParticipant == 0) {
       maxParticipant = 30;
     } else {
@@ -50,6 +52,8 @@ contract Lottery is Ownable, Pausable {
     paused = false;
     affiliateAddress = msg.sender;
     charityAddress = msg.sender;
+    donationRatio = 100;
+    affiliateRatio = 0;
   }
 
   function() public payable {
@@ -88,9 +92,10 @@ contract Lottery is Ownable, Pausable {
     maxParticipant = newNumber;
   }
 
-  function setCharityAddress(address _newCharityAddress) public onlyOwner {
-    require(_newCharityAddress != address(0));
-    charityAddress = _newCharityAddress;
+  function setAffiliateRatio(uint16 newRatio) public onlyOwner {
+    require(newRatio < 101);
+    require(newRatio + donationRatio < 101);
+    affiliateRatio = newRatio;
   }
 
   function setAffiliateAddress(address _newAffiliate) public onlyOwner {
@@ -98,18 +103,29 @@ contract Lottery is Ownable, Pausable {
     affiliateAddress = _newAffiliate;
   }
 
+  function setCharityAddress(address _newCharityAddress) public onlyOwner {
+    require(_newCharityAddress != address(0));
+    charityAddress = _newCharityAddress;
+  }
+  
+  function setDonationRatio(uint16 newRatio) public onlyOwner {
+    require(newRatio < 101);
+    require(newRatio + affiliateRatio < 101);
+    donationRatio = newRatio;
+  }
+
   function runLottery() public onlyOwner returns (uint256, address) {
     require(charityAddress != address(0));
     require(lotteries[currentLottery].participants.length >= 2);
     paused = true;
 
-    // send 10% to charity account.
-    uint256 charityAmount = this.balance / 10;
+    // send money to charity account.
+    uint256 charityAmount = (this.balance * donationRatio) / 100;
     charityAddress.transfer(charityAmount);
     totalDonation += charityAmount;
 
-    // send 1% to an affiliate address to cover the costs.
-    uint256 affiliateAmount = this.balance / 100;
+    // send money to an affiliate address to cover the costs.
+    uint256 affiliateAmount = (this.balance * affiliateRatio) / 100;
     affiliateAddress.transfer(affiliateAmount);
     totalAffiliateAmount += affiliateAmount;
 
@@ -117,12 +133,16 @@ contract Lottery is Ownable, Pausable {
     uint256 randomValue = random();
     address winner = lotteries[currentLottery].participants[randomValue].addr;
 
-    // send the rest of the funds to the winner.
+    // send the rest of the funds to the winner if anything is left.
     uint256 winningPrice = this.balance;
-    winner.transfer(winningPrice);
+    if (winningPrice > 0) {
+      winner.transfer(winningPrice);
+    }
+    
     lotteries[currentLottery].winner = winner;
     totalGivenAmount += winningPrice;
 
+    // initialise a new one.
     initialise();
     paused = false;
     LotteryRunFinished(winner, charityAmount, affiliateAmount, winningPrice);
@@ -132,6 +152,8 @@ contract Lottery is Ownable, Pausable {
   // Helper functions
 
   function random() internal view returns(uint256) {
+    // I know, I know. I should have use a proper off the chain random generator.
+    // Why not implement oraclize and send a pull request?
     uint256 r1 = uint256(block.blockhash(block.number-1));
     uint256 r2 = uint256(block.blockhash(lotteries[currentLottery].startBlock));
 

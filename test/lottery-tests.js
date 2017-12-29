@@ -1,4 +1,4 @@
-const Lottery = artifacts.require("Lottery");
+const KriptoLottery = artifacts.require("KriptoLottery");
 
 const isRevertError = (error) => {
   const invalidOpcode = error.message.search('invalid opcode') >= 0;
@@ -7,7 +7,7 @@ const isRevertError = (error) => {
   return invalidOpcode || outOfGas || revert;
 }
 
-contract('Lottery', accounts => {
+contract('KriptoLottery', accounts => {
   let lottery;
   const owner = accounts[0],
     someone = accounts[1],
@@ -17,7 +17,7 @@ contract('Lottery', accounts => {
 
   describe('constructor', () => {
     it('should set the participant number 30 by default', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const maxCount = await lottery.maxParticipant.call();
 
@@ -25,7 +25,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the participant count if value exists', async() => {
-      lottery = await Lottery.new(100, 0);
+      lottery = await KriptoLottery.new(100, 0);
 
       const maxCount = await lottery.maxParticipant.call();
 
@@ -33,7 +33,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the owner', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const ownerAddress = await lottery.owner.call();
 
@@ -41,7 +41,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the lottery amount to 0.02 eth by default', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const amount = await lottery.lotteryAmount.call();
 
@@ -49,7 +49,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the lottery amount if the value exists', async() => {
-      lottery = await Lottery.new(10, web3.toWei(1, 'ether'));
+      lottery = await KriptoLottery.new(10, web3.toWei(1, 'ether'));
 
       const amount = await lottery.lotteryAmount.call();
 
@@ -57,7 +57,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the current lottery to one', async() => {
-      lottery = await Lottery.new(10, web3.toWei(1, 'ether'));
+      lottery = await KriptoLottery.new(10, web3.toWei(1, 'ether'));
 
       const amount = await lottery.currentLottery.call();
 
@@ -65,7 +65,7 @@ contract('Lottery', accounts => {
     });
 
     it('should initialise the first lottery', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const currentLottery = await lottery.getCurrentLottery();
 
@@ -73,7 +73,7 @@ contract('Lottery', accounts => {
     });
 
     it('should set the affiliate address as owner', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const affiliateAddress = await lottery.affiliateAddress.call();
 
@@ -81,17 +81,33 @@ contract('Lottery', accounts => {
     });
 
     it('should set the charity address as owner', async() => {
-      lottery = await Lottery.new();
+      lottery = await KriptoLottery.new();
 
       const charityAddress = await lottery.charityAddress.call();
 
       assert.equal(owner, charityAddress);
     });
+
+    it('should initialise the donation ratio to 100%', async() => {
+      lottery = await KriptoLottery.new();
+
+      const ratio = await lottery.donationRatio.call();
+
+      assert.equal(100, ratio);
+    });
+
+    it('should initialise the affiliate ratio to 0', async() => {
+      lottery = await KriptoLottery.new();
+
+      const ratio = await lottery.affiliateRatio.call();
+
+      assert.equal(0, ratio);
+    });
   });
 
   describe('lottery functions', () => {
     beforeEach(async() => {
-      lottery = await Lottery.new(30, 0);
+      lottery = await KriptoLottery.new(30, 0);
     });
 
     describe('setMaxParticipants', () => {
@@ -157,7 +173,7 @@ contract('Lottery', accounts => {
       });
 
       it('should not work when max number of people exceeds', async() => {
-        lottery = await Lottery.new(2, 0);
+        lottery = await KriptoLottery.new(2, 0);
 
         await lottery.apply({ value: web3.toWei(0.02, 'ether'), from: someone });
         await lottery.apply({ value: web3.toWei(0.02, 'ether'), from: someone2 });
@@ -298,7 +314,7 @@ contract('Lottery', accounts => {
 
       it('should get 10% cut to charity account', async() => {
 
-        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+        lottery = await KriptoLottery.new(5, web3.toWei(5, 'ether'));
 
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
@@ -317,7 +333,7 @@ contract('Lottery', accounts => {
       });
 
       it('should initialise a new lottery', async() => {
-        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+        lottery = await KriptoLottery.new(5, web3.toWei(5, 'ether'));
 
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
@@ -330,8 +346,8 @@ contract('Lottery', accounts => {
         assert.equal(2, currentLottery);
       });
 
-      it('should send 1% to affiliate account', async() => {
-        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+      it('should not send affiliate to affiliate account by default', async() => {
+        lottery = await KriptoLottery.new(5, web3.toWei(5, 'ether'));
 
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
@@ -347,11 +363,11 @@ contract('Lottery', accounts => {
 
         const newBalance = web3.eth.getBalance(affiliate).toNumber();
 
-        assert.ok(newBalance > affiliateInitialBalance);
+        assert.ok(newBalance == affiliateInitialBalance);
       });
 
-      it('should update the total prize fields', async() => {
-        lottery = await Lottery.new(5, web3.toWei(5, 'ether'));
+      it('should send affiliate amount to affiliate account', async() => {
+        lottery = await KriptoLottery.new(5, web3.toWei(5, 'ether'));
 
         await lottery.apply({ value: web3.toWei(5, 'ether') });
         await lottery.apply({ value: web3.toWei(5, 'ether') });
@@ -360,6 +376,31 @@ contract('Lottery', accounts => {
 
         await lottery.setCharityAddress(charity);
         await lottery.setAffiliateAddress(affiliate);
+        await lottery.setDonationRatio(0);
+        await lottery.setAffiliateRatio(90);
+
+        const affiliateInitialBalance = web3.eth.getBalance(affiliate).toNumber();
+
+
+        await lottery.runLottery({ from: owner });
+
+        const newBalance = web3.eth.getBalance(affiliate).toNumber();
+
+        assert.ok(newBalance > affiliateInitialBalance);
+      });
+
+      it('should update the total prize fields', async() => {
+        lottery = await KriptoLottery.new(5, web3.toWei(5, 'ether'));
+
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+        await lottery.apply({ value: web3.toWei(5, 'ether') });
+
+        await lottery.setCharityAddress(charity);
+        await lottery.setAffiliateAddress(affiliate);
+        await lottery.setDonationRatio(30);
+        await lottery.setAffiliateRatio(30);
 
         await lottery.runLottery({ from: owner });
 
@@ -368,7 +409,7 @@ contract('Lottery', accounts => {
 
         const totalDonation = await lottery.totalDonation.call();
         assert.ok(totalDonation > 0);
-        
+
         const totalAffiliateWon = await lottery.totalAffiliateAmount.call();
         assert.ok(totalAffiliateWon > 0);
       });
@@ -465,6 +506,92 @@ contract('Lottery', accounts => {
 
       //   console.log(random[0], random[1]);
       // });
+    });
+
+    describe('setAffiliateRatio', () => {
+      it('should only run by owner', async() => {
+        try {
+          await lottery.setAffiliateRatio(10, { from: someone });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should not be more than 100', async() => {
+        try {
+          await lottery.setAffiliateRatio(110, { from: owner });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should set the ratio', async() => {
+        await lottery.setDonationRatio(10, { from: owner });
+
+        await lottery.setAffiliateRatio(10, { from: owner });
+
+        const ratio = await lottery.affiliateRatio.call();
+
+        assert(10, ratio);
+      });
+
+      it('should be aware of total distribution ratio', async() => {
+        await lottery.setDonationRatio(100, { from: owner });
+        try {
+          await lottery.setAffiliateRatio(10, { from: owner });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
+    });
+
+    describe('setDonationRatio', () => {
+      it('should only run by owner', async() => {
+        try {
+          await lottery.setDonationRatio(10, { from: someone });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should set the ratio', async() => {
+        await lottery.setDonationRatio(10, { from: owner });
+
+        const ratio = await lottery.donationRatio.call();
+
+        assert(10, ratio);
+      });
+
+      it('should not be more than 100', async() => {
+        try {
+          await lottery.setDonationRatio(110, { from: owner });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
+
+      it('should be aware of total distribution ratio', async() => {
+        await lottery.setDonationRatio(0, { from: owner });
+
+        await lottery.setAffiliateRatio(100, { from: owner });
+        try {
+          await lottery.setDonationRatio(10, { from: owner });
+        } catch (error) {
+          assert.equal(isRevertError(error), true);
+          return;
+        }
+        assert.fail('failed');
+      });
     });
   });
 });
