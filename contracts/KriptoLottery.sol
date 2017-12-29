@@ -61,6 +61,7 @@ contract KriptoLottery is Ownable, Pausable {
   }
 
   function apply() public payable whenNotPaused returns (uint256) {
+    // Anyone can apply as much as they want.
     require(lotteries[currentLottery].participants.length + 1 <= maxParticipant);
     require(msg.value == lotteryAmount);
 
@@ -81,10 +82,14 @@ contract KriptoLottery is Ownable, Pausable {
   // Admin tools
 
   function initialise() public whenPaused onlyOwner {
+    // Balance should be 0 in order to start a new lottery.
+    // otherwise you might end up **stealing** others money.
     require(this.balance == 0);
     currentLottery++;
     lotteries[currentLottery].startBlock = block.number;
     lotteries[currentLottery].blockHash = block.blockhash(lotteries[currentLottery].startBlock);
+    // Set the next waiting time to apprx. 1 week.
+    // This is not working since I couldn't find a good way to unit test this.
     lotteries[currentLottery].endBlock = block.number + NEXT_LOTTERY_WAIT_TIME_IN_BLOCKS;
   }
 
@@ -117,6 +122,9 @@ contract KriptoLottery is Ownable, Pausable {
   function runLottery() public onlyOwner returns (uint256, address) {
     require(charityAddress != address(0));
     require(lotteries[currentLottery].participants.length >= 2);
+    // Uncomment the line below, *if* you can find a way to unit test
+    //    this logic.
+    // require(lotteries[currentLottery].endBlock < block.number);
     paused = true;
 
     // send money to charity account.
