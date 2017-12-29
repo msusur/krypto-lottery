@@ -1,0 +1,21 @@
+{
+  "name": "crypto-lottery",
+  "description": "",
+  "main": "index.js",
+  "authors": [
+    "Mert Susur"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/msusur/crypto-lottery",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "web3": "^0.19.0",
+    "vue": "^2.5.13"
+  }
+}

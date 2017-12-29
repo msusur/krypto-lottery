@@ -2,3 +2,4 @@ node_modules
 build
 /deploy-*
 bin
+bower_components

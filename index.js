@@ -3,7 +3,8 @@ var express = require("express"),
 
 app.set('port', (process.env.PORT || 5000));
 
-app.use("/ui", express.static("ui"));
+app.use("/", express.static("public"));
+app.use("/vendor", express.static("bower_components"));
 app.use("/contracts", express.static("build/contracts"));
 
 app.listen(app.get('port'), function() {
