@@ -1,7 +1,7 @@
 Krypto-Lottery
 =====
 
-A basic lottery game implementation on Ethereum blockchain. Lotteries are heavily regulated by the governments, and aim of this project is to show people how easily you can build a lottery system on blockchain without trusting anyone and spending millions of dollars for building a secure system.
+A basic lottery game implementation on Ethereum blockchain. Lotteries are heavily regulated by the governments, and aim of this project is to show people how easily you can build a lottery system on blockchain without trusting anyone and without spending millions of dollars for building a secure system.
 
 ## How does it work?
 You need to deploy the [KriptoLottery](./contracts/KriptoLottery.sol) contract to an Ethereum network then you'll have the following features;
